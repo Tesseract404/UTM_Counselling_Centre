@@ -1,0 +1,302 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:utm_counselling_centre/Models/CounsellorModel.dart';
+import 'package:utm_counselling_centre/Models/ReportsModel.dart';
+import 'package:utm_counselling_centre/Models/ScheduleModel.dart';
+import '../Models/UserModel.dart';
+
+class firebaseAuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<User?> signUpWithEmailAndPassword(
+      String email, String password) async {
+    try {
+      UserCredential credential = await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+      Fluttertoast.showToast(msg: "Registered successfully!");
+      return credential.user;
+    } catch (e) {
+      String errorMessage;
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'email-already-in-use':
+            errorMessage = "The email is already in use.";
+            break;
+          case 'invalid-email':
+            errorMessage = "The email address is not valid.";
+            break;
+          default:
+            errorMessage = "Registration Error, Invalid credentials.";
+            break;
+        }
+      } else {
+        errorMessage = "An unknown error occurred.";
+      }
+      Fluttertoast.showToast(msg: errorMessage);
+      return null;
+    }
+  }
+
+  Future<User?> signInWithEmailAndPassword(
+      String email, String password) async {
+    try {
+      UserCredential credential = await _auth.signInWithEmailAndPassword(
+          email: email, password: password);
+      Fluttertoast.showToast(msg: "Logged in successfully!");
+      return credential.user;
+    } catch (e) {
+      String errorMessage;
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'user-not-found':
+            errorMessage = "No user found with this email.";
+            break;
+          case 'wrong-password':
+            errorMessage = "Incorrect password.";
+            break;
+          default:
+            errorMessage = "Login Error, Check your credentials.";
+            break;
+        }
+      } else {
+        errorMessage = "An unknown error occurred.";
+      }
+      Fluttertoast.showToast(msg: errorMessage);
+      return null;
+    }
+  }
+  Future<void> signOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      Fluttertoast.showToast(msg: "Logged out successfully!");
+    } catch (e) {
+      Fluttertoast.showToast(msg: "An error occurred while signing out.");
+    }
+  }
+  Future<User?> createUser(UserModel userModel) async {
+    try {
+      final userCollection = FirebaseFirestore.instance.collection("users");
+      //print();
+      String id = _auth.currentUser!.uid;
+      final newUser = UserModel(
+              id: id,
+              username: userModel.username,
+              email: userModel.email,
+              phone: userModel.phone,
+              password: userModel.password,
+              UTMid: userModel.UTMid)
+          .toJson();
+      userCollection.doc(id).set(newUser);
+    } catch (e) {
+      print(e);
+    }
+    return null;
+  }
+
+  Future<void> createReport(ReportModel reportModel) async {
+    try {
+      final userCollection = FirebaseFirestore.instance.collection("users");
+      final reportCollection = FirebaseFirestore.instance.collection("reports");
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return;
+      }
+      //String id = userCollection.doc().id;
+      String id = currentUser.uid;
+      print(id);
+      DocumentSnapshot userDoc = await userCollection.doc(id).get();
+      if (userDoc.exists) {
+        String username = userDoc.get("username");
+        String UTMid = userDoc.get("UTMid");
+
+        String reportid = reportCollection.doc().id;
+        print('im here working');
+        final newReport = ReportModel(
+          id: id,
+          reportid: reportid,
+          username: username,
+          UTMid: UTMid,
+          content: reportModel.content,
+          doctor: reportModel.doctor,
+          timedate: Timestamp.now(),
+        ).toJson();
+        reportCollection.doc(reportid).set(newReport).then((value) {
+          Fluttertoast.showToast(msg: "Report Submitted");
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<List<ReportModel>> fetchUserReports() async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return [];
+      }
+
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection("reports")
+          .where("id", isEqualTo: currentUser.uid)
+          .get();
+
+      List<ReportModel> reports = querySnapshot.docs.map((doc) {
+        return ReportModel.fromJson(doc.data() as Map<String, dynamic>);
+      }).toList();
+      return reports;
+    } catch (e) {
+      print('Fetch Reports Error: $e');
+      return [];
+    }
+  }
+
+  Future<List<ReportModel>> fetchAllReports() async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return [];
+      }
+
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection("reports")
+          .get();
+
+      List<ReportModel> reports = querySnapshot.docs.map((doc) {
+        return ReportModel.fromJson(doc.data() as Map<String, dynamic>);
+      }).toList();
+      return reports;
+    } catch (e) {
+      print('Fetch Reports Error: $e');
+      return [];
+    }
+  }
+
+  Future<List<ScheduleModel>> fetchUserSchedules() async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return [];
+      }
+
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection("schedules")
+          .where("userid", isEqualTo: currentUser.uid)
+          .get();
+
+      List<ScheduleModel> schedules = querySnapshot.docs.map((doc) {
+        return ScheduleModel.fromJson(doc.data() as Map<String, dynamic>);
+      }).toList();
+      return schedules;
+    } catch (e) {
+      print('Fetch Schedules Error: $e');
+      return [];
+    }
+  }
+  Future<List<ScheduleModel>> fetchAllSchedules() async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return [];
+      }
+
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection("schedules")
+          .get();
+
+      List<ScheduleModel> schedules = querySnapshot.docs.map((doc) {
+        return ScheduleModel.fromJson(doc.data() as Map<String, dynamic>);
+      }).toList();
+      return schedules;
+    } catch (e) {
+      print('Fetch Schedules Error: $e');
+      return [];
+    }
+  }
+
+  Future<List<CounsellorModel>> fetchCounsellorDetails() async {
+    try {
+      // User? currentUser = _auth.currentUser;
+      // if (currentUser == null) {
+      //   Fluttertoast.showToast(msg: "No user logged in");
+      //   return [];
+      // }
+
+      QuerySnapshot querySnapshot =
+          await FirebaseFirestore.instance.collection("counsellor").get();
+      if (querySnapshot.docs.isEmpty) {
+        print("No documents found in 'counsellor' collection.");
+      } else {
+        print("Documents found: ${querySnapshot.docs.length}");
+      }
+      print('im here!!');
+      List<CounsellorModel> counsellors = querySnapshot.docs.map((doc) {
+        return CounsellorModel.fromJson(doc.data() as Map<String, dynamic>);
+      }).toList();
+      return counsellors;
+    } catch (e) {
+      print('Fetch Counsellors Error: $e');
+      return [];
+    }
+  }
+
+  Future<void> createSchedule(ScheduleModel scheduleModel) async {
+    try {
+      final userCollection = FirebaseFirestore.instance.collection("users");
+      final scheduleCollection =
+          FirebaseFirestore.instance.collection("schedules");
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return;
+      }
+      String id = currentUser.uid;
+      print(id);
+      DocumentSnapshot userDoc = await userCollection.doc(id).get();
+      if (userDoc.exists) {
+        String username = userDoc.get("username");
+        String UTMid = userDoc.get("UTMid");
+        String scheduleid = scheduleCollection.doc().id;
+        print('im here working');
+        final newSchedule = ScheduleModel(
+          userid: id,
+          scheduleid: scheduleid,
+          username: username,
+          UTMid: UTMid,
+          counsellor: scheduleModel.counsellor,
+          timedate: scheduleModel.timedate,
+          done: scheduleModel.done,
+        ).toJson();
+        scheduleCollection.doc(scheduleid).set(newSchedule).then((value) {
+          Fluttertoast.showToast(msg: "Meeting Scheduled");
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+  Future<void> updateScheduleDone(String scheduleid) async {
+    try {
+       User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        Fluttertoast.showToast(msg: "No user logged in");
+        return;
+      }
+      final scheduleCollection = FirebaseFirestore.instance.collection("schedules");
+      DocumentReference scheduleDoc = scheduleCollection.doc(scheduleid);
+      await scheduleDoc.update({'done': true});
+
+      Fluttertoast.showToast(msg: "Schedule updated successfully");
+
+    } catch (e) {
+      print("Error updating schedule: $e");
+      Fluttertoast.showToast(msg: "Error updating schedule");
+    }
+  }
+}

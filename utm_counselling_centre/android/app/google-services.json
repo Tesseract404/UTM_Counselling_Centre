@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1086633837295",
+    "project_id": "utm-counselling",
+    "storage_bucket": "utm-counselling.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1086633837295:android:50fffe074f61d5fe63111a",
+        "android_client_info": {
+          "package_name": "com.example.utm_counselling_centre"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjXzQLncI87Y8HYzzuDLdk1Oz9QdMiD4o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

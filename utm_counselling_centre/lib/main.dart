@@ -41,7 +41,7 @@ void main()  async {
         '/notification': (context) =>  const Cnotification(),
         '/adminfeed': (context) =>  const AdminFeed(),
       },
-      initialRoute: '/dash',
+      initialRoute: '/',
     ),
   );
 }
